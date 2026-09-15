@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "iserrano.uptime-monitor",
+  "name": "Uptime Monitor",
+  "version": "1.0.0",
+  "author": "Isaac Serrano",
+  "description": "Green/red bar dot reflecting the status of up to 5 IP-monitored sites.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Uptime Monitor",
+    "description": "Status dot (green/red) for up to 5 sites, with a list and name + IP configuration.",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

@@ -6,8 +6,8 @@ import qs.Commons
 import qs.Ui
 import "Model.js" as Model
 
-// Bar dot + popup for up to 5 IP-monitored sites. Green when every
-// configured site answers a ping, red when one or more don't. Click opens a
+// Bar dot + popup for up to 5 IP-monitored servers. Green when every
+// configured server answers a ping, red when one or more don't. Click opens a
 // panel with the live status list on top and the 5-slot name/IP editor below
 // it. A blank IP means "not configured" and is skipped by both the list and
 // the checker, per spec.
@@ -27,14 +27,14 @@ Panel {
   // the gear icon. Always reopens on "list" — see onOpenedChanged below.
   property string page: "list"
 
-  // Saved config, always 5 entries (Model.normalizeSites pads/truncates).
-  property var sites: Model.normalizeSites([])
+  // Saved config, always 5 entries (Model.normalizeServers pads/truncates).
+  property var servers: Model.normalizeServers([])
   // Per-slot result: null = not configured / not checked yet, true = up,
-  // false = down. Indexes line up 1:1 with `sites`.
+  // false = down. Indexes line up 1:1 with `servers`.
   property var status: [null, null, null, null, null]
 
-  readonly property var configuredIdx: Model.configuredIndexes(sites)
-  readonly property bool hasSites: configuredIdx.length > 0
+  readonly property var configuredIdx: Model.configuredIndexes(servers)
+  readonly property bool hasServers: configuredIdx.length > 0
   readonly property bool anyDown: {
     for (var i = 0; i < configuredIdx.length; i++) {
       if (status[configuredIdx[i]] === false) return true
@@ -49,21 +49,21 @@ Panel {
   }
   // Grey until there's something to show, green once everything monitored
   // answers, red the moment anything doesn't.
-  readonly property color dotColor: (!hasSites || !haveResult) ? unknownColor : (anyDown ? downColor : upColor)
+  readonly property color dotColor: (!hasServers || !haveResult) ? unknownColor : (anyDown ? downColor : upColor)
   readonly property bool checking: check0.running || check1.running || check2.running || check3.running || check4.running
 
-  // ---- editable form buffers, separate from `sites` so typing doesn't
+  // ---- editable form buffers, separate from `servers` so typing doesn't
   // reformat mid-edit or get clobbered by an external file reload ----
   property var formName: ["", "", "", "", ""]
   property var formIp: ["", "", "", "", ""]
   property bool dirty: false
   property string saveMessage: ""
 
-  function loadFormFromSites() {
+  function loadFormFromServers() {
     var names = [], ips = []
-    for (var i = 0; i < Model.MAX_SITES; i++) {
-      names.push(sites[i] ? sites[i].name : "")
-      ips.push(sites[i] ? sites[i].ip : "")
+    for (var i = 0; i < Model.MAX_SERVERS; i++) {
+      names.push(servers[i] ? servers[i].name : "")
+      ips.push(servers[i] ? servers[i].ip : "")
     }
     formName = names
     formIp = ips
@@ -86,11 +86,11 @@ Panel {
     saveMessage = ""
   }
 
-  function saveSites() {
+  function saveServers() {
     var next = []
-    for (var i = 0; i < Model.MAX_SITES; i++) next.push({ name: formName[i], ip: formIp[i] })
-    root.sites = Model.normalizeSites(next)
-    sitesFile.setText(Model.sitesToFileText(root.sites))
+    for (var i = 0; i < Model.MAX_SERVERS; i++) next.push({ name: formName[i], ip: formIp[i] })
+    root.servers = Model.normalizeServers(next)
+    serversFile.setText(Model.serversToFileText(root.servers))
     root.dirty = false
     root.saveMessage = "Saved."
     saveMessageTimer.restart()
@@ -103,7 +103,7 @@ Panel {
   onOpenedChanged: {
     if (!opened) return
     root.page = "list"
-    if (!dirty) loadFormFromSites()
+    if (!dirty) loadFormFromServers()
   }
 
   Timer {
@@ -113,18 +113,18 @@ Panel {
   }
 
   FileView {
-    id: sitesFile
+    id: serversFile
     path: Quickshell.env("HOME") + "/.local/state/omarchy/settings/uptime-monitor.json"
     watchChanges: true
     printErrors: false
     onLoaded: {
-      root.sites = Model.parseSitesFile(text())
-      if (!root.dirty) root.loadFormFromSites()
+      root.servers = Model.parseServersFile(text())
+      if (!root.dirty) root.loadFormFromServers()
       root.runChecks()
     }
     onLoadFailed: {
-      root.sites = Model.normalizeSites([])
-      if (!root.dirty) root.loadFormFromSites()
+      root.servers = Model.normalizeServers([])
+      if (!root.dirty) root.loadFormFromServers()
     }
     onFileChanged: reload()
   }
@@ -138,7 +138,7 @@ Panel {
 
   Component.onCompleted: {
     ensureDirProc.running = true
-    sitesFile.reload()
+    serversFile.reload()
   }
 
   function statusColorFor(i) {
@@ -161,7 +161,7 @@ Panel {
     status = next
   }
 
-  // Fixed 1-Process-per-slot pool: the 5-site cap means no dynamic Process
+  // Fixed 1-Process-per-slot pool: the 5-server cap means no dynamic Process
   // creation is needed, and each slot's check can't stomp on another's.
   function processFor(i) {
     switch (i) {
@@ -174,15 +174,15 @@ Panel {
   }
 
   function runChecks() {
-    for (var i = 0; i < Model.MAX_SITES; i++) {
-      var site = root.sites[i]
-      if (!Model.isConfigured(site)) {
+    for (var i = 0; i < Model.MAX_SERVERS; i++) {
+      var server = root.servers[i]
+      if (!Model.isConfigured(server)) {
         root.setStatus(i, null)
         continue
       }
       var proc = processFor(i)
       if (proc.running) continue
-      proc.command = ["ping", "-c", "1", "-W", String(root.pingTimeoutSec), site.ip]
+      proc.command = ["ping", "-c", "1", "-W", String(root.pingTimeoutSec), server.ip]
       proc.running = true
     }
   }
@@ -223,8 +223,8 @@ Panel {
     anchors.fill: parent
     bar: root.bar
     slotSize: Style.bar.statusSlot
-    tooltipText: !root.hasSites ? "Uptime Monitor — no sites configured"
-      : (root.anyDown ? "Uptime Monitor — some sites are down" : "Uptime Monitor — all sites up")
+    tooltipText: !root.hasServers ? "My Servers Uptime Monitor — no servers configured"
+      : (root.anyDown ? "My Servers Uptime Monitor — some servers are down" : "My Servers Uptime Monitor — all servers up")
     iconComponent: dotComponent
     onPressed: function(b) { root.toggle() }
   }
@@ -303,7 +303,7 @@ Panel {
                   Layout.fillWidth: true
                   textFormat: Text.PlainText
                   elide: Text.ElideRight
-                  text: "Uptime Monitor"
+                  text: "My Servers Uptime Monitor"
                   color: root.bar.foreground
                   font.family: root.bar.fontFamily
                   font.pixelSize: Style.font.title
@@ -313,8 +313,8 @@ Panel {
                   Layout.fillWidth: true
                   textFormat: Text.PlainText
                   elide: Text.ElideRight
-                  text: !root.hasSites ? "No sites configured"
-                    : (!root.haveResult ? "Checking…" : (root.anyDown ? "Some sites are down" : "All sites up"))
+                  text: !root.hasServers ? "No servers configured"
+                    : (!root.haveResult ? "Checking…" : (root.anyDown ? "Some servers are down" : "All servers up"))
                   color: Qt.darker(root.bar.foreground, 1.4)
                   font.family: root.bar.fontFamily
                   font.pixelSize: Style.font.bodySmall
@@ -324,7 +324,7 @@ Panel {
               Button {
                 Layout.alignment: Qt.AlignVCenter
                 iconText: "⚙"
-                tooltipText: "Configure sites"
+                tooltipText: "Configure servers"
                 foreground: root.bar.foreground
                 fontFamily: root.bar.fontFamily
                 iconSize: Style.font.subtitle * 1.3
@@ -337,17 +337,17 @@ Panel {
             PanelSeparator { foreground: root.bar.foreground }
 
             PanelSectionHeader {
-              text: "MONITORED SITES"
+              text: "MONITORED SERVERS"
               foreground: root.bar.foreground
               fontFamily: root.bar.fontFamily
             }
 
             Text {
-              visible: !root.hasSites
+              visible: !root.hasServers
               width: parent.width
               textFormat: Text.PlainText
               wrapMode: Text.Wrap
-              text: "No sites yet — tap the gear above to add up to 5."
+              text: "No servers yet — tap the gear above to add up to 5."
               color: Qt.darker(root.bar.foreground, 1.4)
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.bodySmall
@@ -358,13 +358,13 @@ Panel {
               model: root.configuredIdx
 
               delegate: Item {
-                id: siteRowItem
+                id: serverRowItem
                 required property int modelData
                 width: column.width
-                implicitHeight: siteRow.implicitHeight
+                implicitHeight: serverRow.implicitHeight
 
                 Row {
-                  id: siteRow
+                  id: serverRow
                   width: parent.width
                   spacing: Style.space(10)
 
@@ -372,7 +372,7 @@ Panel {
                     width: Style.space(9)
                     height: width
                     radius: width / 2
-                    color: root.statusColorFor(siteRowItem.modelData)
+                    color: root.statusColorFor(serverRowItem.modelData)
                     anchors.verticalCenter: parent.verticalCenter
                   }
 
@@ -385,7 +385,7 @@ Panel {
                       textFormat: Text.PlainText
                       width: parent.width
                       elide: Text.ElideRight
-                      text: Model.displayName(root.sites[siteRowItem.modelData])
+                      text: Model.displayName(root.servers[serverRowItem.modelData])
                       color: root.bar.foreground
                       font.family: root.bar.fontFamily
                       font.pixelSize: Style.font.body
@@ -394,7 +394,7 @@ Panel {
                       textFormat: Text.PlainText
                       width: parent.width
                       elide: Text.ElideRight
-                      text: root.sites[siteRowItem.modelData].ip
+                      text: root.servers[serverRowItem.modelData].ip
                       color: Qt.darker(root.bar.foreground, 1.5)
                       font.family: root.bar.fontFamily
                       font.pixelSize: Style.font.caption
@@ -404,8 +404,8 @@ Panel {
                   Text {
                     id: statusLabel
                     textFormat: Text.PlainText
-                    text: root.statusTextFor(siteRowItem.modelData)
-                    color: root.statusColorFor(siteRowItem.modelData)
+                    text: root.statusTextFor(serverRowItem.modelData)
+                    color: root.statusColorFor(serverRowItem.modelData)
                     font.family: root.bar.fontFamily
                     font.pixelSize: Style.font.bodySmall
                     font.bold: true
@@ -416,7 +416,7 @@ Panel {
             }
 
             Row {
-              visible: root.hasSites
+              visible: root.hasServers
               spacing: Style.space(10)
 
               Button {
@@ -465,7 +465,7 @@ Panel {
                 Layout.fillWidth: true
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
-                text: "Configure Sites"
+                text: "Configure Servers"
                 color: root.bar.foreground
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.title
@@ -479,7 +479,7 @@ Panel {
               width: parent.width
               textFormat: Text.PlainText
               wrapMode: Text.Wrap
-              text: "Up to 5 sites. Leave a slot's IP blank to skip it."
+              text: "Up to 5 servers. Leave a slot's IP blank to skip it."
               color: Qt.darker(root.bar.foreground, 1.4)
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.bodySmall
@@ -487,7 +487,7 @@ Panel {
             }
 
             Repeater {
-              model: Model.MAX_SITES
+              model: Model.MAX_SERVERS
 
               delegate: Column {
                 id: slotColumn
@@ -497,7 +497,7 @@ Panel {
 
                 Text {
                   textFormat: Text.PlainText
-                  text: "Site " + (slotColumn.index + 1)
+                  text: "Server " + (slotColumn.index + 1)
                   color: Qt.darker(root.bar.foreground, 1.5)
                   font.family: root.bar.fontFamily
                   font.pixelSize: Style.font.caption
@@ -510,7 +510,7 @@ Panel {
 
                   TextField {
                     width: Math.round((parent.width - Style.space(8)) * 0.42)
-                    placeholderText: "Site name"
+                    placeholderText: "Server name"
                     text: root.formName[slotColumn.index]
                     foreground: root.bar.foreground
                     onTextChanged: if (text !== root.formName[slotColumn.index]) root.setFormName(slotColumn.index, text)
@@ -534,7 +534,7 @@ Panel {
                 foreground: root.bar.foreground
                 fontFamily: root.bar.fontFamily
                 bordered: true
-                onClicked: root.saveSites()
+                onClicked: root.saveServers()
               }
               Text {
                 textFormat: Text.PlainText

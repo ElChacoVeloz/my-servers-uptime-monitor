@@ -1,10 +1,10 @@
-# Uptime Monitor
+# My Servers Uptime Monitor
 
-An [Omarchy](https://omarchy.org/) bar plugin that watches up to 5 sites by
+An [Omarchy](https://omarchy.org/) bar plugin that watches up to 5 servers by
 IP and shows a status dot in the top bar:
 
-- 🟢 **green** — every configured site answers a ping.
-- 🔴 **red** — one or more configured sites don't.
+- 🟢 **green** — every configured server answers a ping.
+- 🔴 **red** — one or more configured servers don't.
 - ⚪ **grey** — nothing configured yet, or the first check hasn't run yet.
 
 Click the dot to open the status list. Click the gear in the top-right
@@ -18,7 +18,7 @@ corner to switch to the configuration page.
 
 ## Features
 
-- Up to 5 monitored sites, each with a **name** and an **IP address**.
+- Up to 5 monitored servers, each with a **name** and an **IP address**.
 - A slot with a blank IP is skipped entirely — not shown in the list, not
   checked.
 - Checks run automatically every 30 minutes, and immediately after saving
@@ -30,13 +30,13 @@ corner to switch to the configuration page.
 ## Installation
 
 ```bash
-omarchy plugin add https://github.com/elchacoveloz/my-sites-uptime-monitor.git --enable --yes
+omarchy plugin add https://github.com/elchacoveloz/my-servers-uptime-monitor.git --enable --yes
 ```
 
 Or by hand:
 
 ```bash
-git clone https://github.com/elchacoveloz/my-sites-uptime-monitor.git \
+git clone https://github.com/elchacoveloz/my-servers-uptime-monitor.git \
   ~/.config/omarchy/plugins/iserrano.uptime-monitor
 omarchy-shell shell rescanPlugins
 omarchy plugin enable iserrano.uptime-monitor
@@ -47,18 +47,18 @@ The widget lands in the bar's right section by default; move it with
 
 ## How checks work
 
-Each configured site is checked with `ping -c 1 -W 2 <ip>` every 30 minutes,
+Each configured server is checked with `ping -c 1 -W 2 <ip>` every 30 minutes,
 and also right after you save the configuration page or press "Check now".
 
 ## Configuration storage
 
-Site config lives outside `shell.json`, in its own state file:
+Server config lives outside `shell.json`, in its own state file:
 
 `~/.local/state/omarchy/settings/uptime-monitor.json`
 
 ```json
 {
-  "sites": [
+  "servers": [
     { "name": "Web server", "ip": "203.0.113.10" },
     { "name": "", "ip": "" },
     { "name": "", "ip": "" },

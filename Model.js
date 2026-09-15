@@ -1,20 +1,20 @@
 // Pure helpers for the uptime-monitor plugin. Kept side-effect free so the
-// site-list parsing/formatting can be reasoned about (and unit tested) apart
+// server-list parsing/formatting can be reasoned about (and unit tested) apart
 // from the QML/Process plumbing in Panel.qml.
 
-var MAX_SITES = 5
+var MAX_SERVERS = 5
 
-function emptySite() {
+function emptyServer() {
   return { name: "", ip: "" }
 }
 
-// Always returns exactly MAX_SITES entries, trimmed. Extra input entries are
+// Always returns exactly MAX_SERVERS entries, trimmed. Extra input entries are
 // dropped; missing ones are padded with blanks, so callers never have to
-// null-check `sites[i]`.
-function normalizeSites(raw) {
+// null-check `servers[i]`.
+function normalizeServers(raw) {
   var list = Array.isArray(raw) ? raw : []
   var out = []
-  for (var i = 0; i < MAX_SITES; i++) {
+  for (var i = 0; i < MAX_SERVERS; i++) {
     var entry = list[i] || {}
     out.push({
       name: String(entry.name || "").trim(),
@@ -24,36 +24,36 @@ function normalizeSites(raw) {
   return out
 }
 
-function parseSitesFile(raw) {
+function parseServersFile(raw) {
   try {
     var parsed = JSON.parse(String(raw || ""))
-    return normalizeSites(parsed && parsed.sites)
+    return normalizeServers(parsed && parsed.servers)
   } catch (e) {
-    return normalizeSites([])
+    return normalizeServers([])
   }
 }
 
-function sitesToFileText(sites) {
-  return JSON.stringify({ sites: normalizeSites(sites) }, null, 2) + "\n"
+function serversToFileText(servers) {
+  return JSON.stringify({ servers: normalizeServers(servers) }, null, 2) + "\n"
 }
 
 // A blank slot (no IP) is never monitored, per spec — a name with no IP has
 // nothing to check either, so IP is the single source of truth here.
-function isConfigured(site) {
-  return !!(site && String(site.ip || "").trim() !== "")
+function isConfigured(server) {
+  return !!(server && String(server.ip || "").trim() !== "")
 }
 
-// Falls back to the IP so a configured-but-unnamed site still has a label.
-function displayName(site) {
-  if (!site) return ""
-  var name = String(site.name || "").trim()
+// Falls back to the IP so a configured-but-unnamed server still has a label.
+function displayName(server) {
+  if (!server) return ""
+  var name = String(server.name || "").trim()
   if (name !== "") return name
-  return String(site.ip || "").trim()
+  return String(server.ip || "").trim()
 }
 
-function configuredIndexes(sites) {
+function configuredIndexes(servers) {
   var out = []
-  var list = Array.isArray(sites) ? sites : []
+  var list = Array.isArray(servers) ? servers : []
   for (var i = 0; i < list.length; i++) {
     if (isConfigured(list[i])) out.push(i)
   }
@@ -62,11 +62,11 @@ function configuredIndexes(sites) {
 
 if (typeof module !== "undefined") {
   module.exports = {
-    MAX_SITES: MAX_SITES,
-    emptySite: emptySite,
-    normalizeSites: normalizeSites,
-    parseSitesFile: parseSitesFile,
-    sitesToFileText: sitesToFileText,
+    MAX_SERVERS: MAX_SERVERS,
+    emptyServer: emptyServer,
+    normalizeServers: normalizeServers,
+    parseServersFile: parseServersFile,
+    serversToFileText: serversToFileText,
     isConfigured: isConfigured,
     displayName: displayName,
     configuredIndexes: configuredIndexes

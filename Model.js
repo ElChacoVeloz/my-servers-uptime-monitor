@@ -2,10 +2,22 @@
 // server-list parsing/formatting can be reasoned about (and unit tested) apart
 // from the QML/Process plumbing in Panel.qml.
 
-var MAX_SERVERS = 5
+var MAX_SERVERS = 10
 
 function emptyServer() {
   return { name: "", ip: "" }
+}
+
+function emptyStatuses() {
+  var out = []
+  for (var i = 0; i < MAX_SERVERS; i++) out.push(null)
+  return out
+}
+
+function emptyStrings() {
+  var out = []
+  for (var i = 0; i < MAX_SERVERS; i++) out.push("")
+  return out
 }
 
 // Always returns exactly MAX_SERVERS entries, trimmed. Extra input entries are
@@ -64,6 +76,8 @@ if (typeof module !== "undefined") {
   module.exports = {
     MAX_SERVERS: MAX_SERVERS,
     emptyServer: emptyServer,
+    emptyStatuses: emptyStatuses,
+    emptyStrings: emptyStrings,
     normalizeServers: normalizeServers,
     parseServersFile: parseServersFile,
     serversToFileText: serversToFileText,

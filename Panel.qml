@@ -6,9 +6,9 @@ import qs.Commons
 import qs.Ui
 import "Model.js" as Model
 
-// Bar dot + popup for up to 5 IP-monitored servers. Green when every
+// Bar dot + popup for up to 10 IP-monitored servers. Green when every
 // configured server answers a ping, red when one or more don't. Click opens a
-// panel with the live status list on top and the 5-slot name/IP editor below
+// panel with the live status list on top and the 10-slot name/IP editor below
 // it. A blank IP means "not configured" and is skipped by both the list and
 // the checker, per spec.
 Panel {
@@ -23,15 +23,15 @@ Panel {
   readonly property int checkIntervalMs: 30 * 60 * 1000
   readonly property int pingTimeoutSec: 2
 
-  // "list" = main page (status list), "settings" = the 5-slot editor behind
+  // "list" = main page (status list), "settings" = the 10-slot editor behind
   // the gear icon. Always reopens on "list" — see onOpenedChanged below.
   property string page: "list"
 
-  // Saved config, always 5 entries (Model.normalizeServers pads/truncates).
+  // Saved config, always 10 entries (Model.normalizeServers pads/truncates).
   property var servers: Model.normalizeServers([])
   // Per-slot result: null = not configured / not checked yet, true = up,
   // false = down. Indexes line up 1:1 with `servers`.
-  property var status: [null, null, null, null, null]
+  property var status: Model.emptyStatuses()
 
   readonly property var configuredIdx: Model.configuredIndexes(servers)
   readonly property bool hasServers: configuredIdx.length > 0
@@ -51,11 +51,12 @@ Panel {
   // answers, red the moment anything doesn't.
   readonly property color dotColor: (!hasServers || !haveResult) ? unknownColor : (anyDown ? downColor : upColor)
   readonly property bool checking: check0.running || check1.running || check2.running || check3.running || check4.running
+    || check5.running || check6.running || check7.running || check8.running || check9.running
 
   // ---- editable form buffers, separate from `servers` so typing doesn't
   // reformat mid-edit or get clobbered by an external file reload ----
-  property var formName: ["", "", "", "", ""]
-  property var formIp: ["", "", "", "", ""]
+  property var formName: Model.emptyStrings()
+  property var formIp: Model.emptyStrings()
   property bool dirty: false
   property string saveMessage: ""
 
@@ -89,12 +90,25 @@ Panel {
   function saveServers() {
     var next = []
     for (var i = 0; i < Model.MAX_SERVERS; i++) next.push({ name: formName[i], ip: formIp[i] })
-    root.servers = Model.normalizeServers(next)
+    root.applyServers(next)
     serversFile.setText(Model.serversToFileText(root.servers))
     root.dirty = false
     root.saveMessage = "Saved."
     saveMessageTimer.restart()
     root.runChecks()
+  }
+
+  // Reset results when a slot changes so a newly entered server never inherits
+  // the previous server's state or alert-suppression state.
+  function applyServers(nextServers) {
+    var normalized = Model.normalizeServers(nextServers)
+    var nextStatus = status.slice()
+    for (var i = 0; i < Model.MAX_SERVERS; i++) {
+      var oldIp = servers[i] ? servers[i].ip : ""
+      if (oldIp !== normalized[i].ip) nextStatus[i] = null
+    }
+    servers = normalized
+    status = nextStatus
   }
 
   // Pick up any hand-edits to the state file the moment the popup opens, as
@@ -118,12 +132,12 @@ Panel {
     watchChanges: true
     printErrors: false
     onLoaded: {
-      root.servers = Model.parseServersFile(text())
+      root.applyServers(Model.parseServersFile(text()))
       if (!root.dirty) root.loadFormFromServers()
       root.runChecks()
     }
     onLoadFailed: {
-      root.servers = Model.normalizeServers([])
+      root.applyServers([])
       if (!root.dirty) root.loadFormFromServers()
     }
     onFileChanged: reload()
@@ -161,7 +175,43 @@ Panel {
     status = next
   }
 
-  // Fixed 1-Process-per-slot pool: the 5-server cap means no dynamic Process
+  function notifyServerDown(name, ip) {
+    var when = Qt.formatDateTime(new Date(), "yyyy-MM-dd HH:mm:ss")
+    var headline = "Server down: " + (name || ip)
+    var body = "IP: " + ip + "\nDate and time: " + when
+    try {
+      Quickshell.execDetached([
+        "/usr/bin/omarchy-notification-send",
+        "--app-name", "my-servers-uptime-monitor",
+        "-u", "critical",
+        headline,
+        body
+      ])
+    } catch (e) {
+      // Monitoring must continue even if desktop notification delivery fails.
+    }
+  }
+
+  function handleCheckExit(i, exitCode, checkedName, checkedIp) {
+    // A settings reload can change a slot while its old ping is still running.
+    // Ignore that stale result and immediately check the replacement target.
+    var current = root.servers[i]
+    if (!current || current.ip !== checkedIp) {
+      root.setStatus(i, null)
+      Qt.callLater(root.runChecks)
+      return
+    }
+
+    var wasDown = root.status[i] === false
+    var isUp = exitCode === 0
+    root.setStatus(i, isUp)
+    // Notify once when an outage is first detected. A recovery resets the
+    // state, so a later outage generates a fresh notification without sending
+    // the same alert every 30 minutes while the server remains down.
+    if (!isUp && !wasDown) root.notifyServerDown(checkedName, checkedIp)
+  }
+
+  // Fixed 1-Process-per-slot pool: the 10-server cap means no dynamic Process
   // creation is needed, and each slot's check can't stomp on another's.
   function processFor(i) {
     switch (i) {
@@ -169,7 +219,12 @@ Panel {
       case 1: return check1
       case 2: return check2
       case 3: return check3
-      default: return check4
+      case 4: return check4
+      case 5: return check5
+      case 6: return check6
+      case 7: return check7
+      case 8: return check8
+      default: return check9
     }
   }
 
@@ -182,6 +237,8 @@ Panel {
       }
       var proc = processFor(i)
       if (proc.running) continue
+      proc.checkedName = Model.displayName(server)
+      proc.checkedIp = server.ip
       proc.command = ["ping", "-c", "1", "-W", String(root.pingTimeoutSec), server.ip]
       proc.running = true
     }
@@ -189,23 +246,63 @@ Panel {
 
   Process {
     id: check0
-    onExited: function(exitCode) { root.setStatus(0, exitCode === 0) }
+    property string checkedName: ""
+    property string checkedIp: ""
+    onExited: function(exitCode) { root.handleCheckExit(0, exitCode, checkedName, checkedIp) }
   }
   Process {
     id: check1
-    onExited: function(exitCode) { root.setStatus(1, exitCode === 0) }
+    property string checkedName: ""
+    property string checkedIp: ""
+    onExited: function(exitCode) { root.handleCheckExit(1, exitCode, checkedName, checkedIp) }
   }
   Process {
     id: check2
-    onExited: function(exitCode) { root.setStatus(2, exitCode === 0) }
+    property string checkedName: ""
+    property string checkedIp: ""
+    onExited: function(exitCode) { root.handleCheckExit(2, exitCode, checkedName, checkedIp) }
   }
   Process {
     id: check3
-    onExited: function(exitCode) { root.setStatus(3, exitCode === 0) }
+    property string checkedName: ""
+    property string checkedIp: ""
+    onExited: function(exitCode) { root.handleCheckExit(3, exitCode, checkedName, checkedIp) }
   }
   Process {
     id: check4
-    onExited: function(exitCode) { root.setStatus(4, exitCode === 0) }
+    property string checkedName: ""
+    property string checkedIp: ""
+    onExited: function(exitCode) { root.handleCheckExit(4, exitCode, checkedName, checkedIp) }
+  }
+  Process {
+    id: check5
+    property string checkedName: ""
+    property string checkedIp: ""
+    onExited: function(exitCode) { root.handleCheckExit(5, exitCode, checkedName, checkedIp) }
+  }
+  Process {
+    id: check6
+    property string checkedName: ""
+    property string checkedIp: ""
+    onExited: function(exitCode) { root.handleCheckExit(6, exitCode, checkedName, checkedIp) }
+  }
+  Process {
+    id: check7
+    property string checkedName: ""
+    property string checkedIp: ""
+    onExited: function(exitCode) { root.handleCheckExit(7, exitCode, checkedName, checkedIp) }
+  }
+  Process {
+    id: check8
+    property string checkedName: ""
+    property string checkedIp: ""
+    onExited: function(exitCode) { root.handleCheckExit(8, exitCode, checkedName, checkedIp) }
+  }
+  Process {
+    id: check9
+    property string checkedName: ""
+    property string checkedIp: ""
+    onExited: function(exitCode) { root.handleCheckExit(9, exitCode, checkedName, checkedIp) }
   }
 
   Timer {
@@ -347,7 +444,7 @@ Panel {
               width: parent.width
               textFormat: Text.PlainText
               wrapMode: Text.Wrap
-              text: "No servers yet — tap the gear above to add up to 5."
+              text: "No servers yet — tap the gear above to add up to 10."
               color: Qt.darker(root.bar.foreground, 1.4)
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.bodySmall
@@ -479,7 +576,7 @@ Panel {
               width: parent.width
               textFormat: Text.PlainText
               wrapMode: Text.Wrap
-              text: "Up to 5 servers. Leave a slot's IP blank to skip it."
+              text: "Up to 10 servers. Leave a slot's IP blank to skip it."
               color: Qt.darker(root.bar.foreground, 1.4)
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.bodySmall

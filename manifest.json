@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "iserrano.uptime-monitor",
   "name": "My Servers Uptime Monitor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Isaac Serrano",
-  "description": "Green/red bar dot reflecting the status of up to 5 IP-monitored servers.",
+  "description": "Green/red bar dot reflecting the status of up to 10 IP-monitored servers, with outage notifications.",
   "kinds": [
     "bar-widget"
   ],
@@ -13,7 +13,7 @@
   },
   "barWidget": {
     "displayName": "My Servers Uptime Monitor",
-    "description": "Status dot (green/red) for up to 5 servers, with a list and name + IP configuration.",
+    "description": "Status dot (green/red) for up to 10 servers, with a list, configuration, and outage notifications.",
     "category": "Info",
     "allowMultiple": false,
     "defaultSection": "right"

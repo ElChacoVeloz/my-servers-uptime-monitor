@@ -1,6 +1,6 @@
 # My Servers Uptime Monitor
 
-An [Omarchy](https://omarchy.org/) bar plugin that watches up to 5 servers by
+An [Omarchy](https://omarchy.org/) bar plugin that watches up to 10 servers by
 IP and shows a status dot in the top bar:
 
 - 🟢 **green** — every configured server answers a ping.
@@ -18,13 +18,17 @@ corner to switch to the configuration page.
 
 ## Features
 
-- Up to 5 monitored servers, each with a **name** and an **IP address**.
+- Up to 10 monitored servers, each with a **name** and an **IP address**.
 - A slot with a blank IP is skipped entirely — not shown in the list, not
   checked.
 - Checks run automatically every 30 minutes, and immediately after saving
   changes or pressing "Check now".
+- An Omarchy desktop notification is sent when an outage is first detected.
+  It includes the server name, IP address, and the local date and time. The
+  alert is not repeated every 30 minutes while the same server remains down;
+  after a recovery, a later outage sends a new notification.
 - Two-page panel: the main page is just the live status list; the gear icon
-  opens a dedicated settings page for the 5-slot editor, keeping the two
+  opens a dedicated settings page for the 10-slot editor, keeping the two
   concerns apart.
 
 ## Installation
@@ -60,6 +64,11 @@ Server config lives outside `shell.json`, in its own state file:
 {
   "servers": [
     { "name": "Web server", "ip": "203.0.113.10" },
+    { "name": "", "ip": "" },
+    { "name": "", "ip": "" },
+    { "name": "", "ip": "" },
+    { "name": "", "ip": "" },
+    { "name": "", "ip": "" },
     { "name": "", "ip": "" },
     { "name": "", "ip": "" },
     { "name": "", "ip": "" },

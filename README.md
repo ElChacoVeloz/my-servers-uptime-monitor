@@ -30,13 +30,13 @@ corner to switch to the configuration page.
 ## Installation
 
 ```bash
-omarchy plugin add https://github.com/elchacoveloz/omarchy-uptime-monitor.git --enable --yes
+omarchy plugin add https://github.com/elchacoveloz/my-sites-uptime-monitor.git --enable --yes
 ```
 
 Or by hand:
 
 ```bash
-git clone https://github.com/elchacoveloz/omarchy-uptime-monitor.git \
+git clone https://github.com/elchacoveloz/my-sites-uptime-monitor.git \
   ~/.config/omarchy/plugins/iserrano.uptime-monitor
 omarchy-shell shell rescanPlugins
 omarchy plugin enable iserrano.uptime-monitor

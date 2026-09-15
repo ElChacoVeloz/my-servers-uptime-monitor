@@ -49,6 +49,21 @@ omarchy plugin enable iserrano.uptime-monitor
 The widget lands in the bar's right section by default; move it with
 `omarchy bar move iserrano.uptime-monitor --section <left|center|right>`.
 
+## Uninstallation
+
+Remove the plugin and unload it from Omarchy Shell:
+
+```bash
+omarchy plugin remove iserrano.uptime-monitor --yes
+```
+
+The removal command leaves your saved server configuration in place. To delete
+it as well:
+
+```bash
+rm -f ~/.local/state/omarchy/settings/uptime-monitor.json
+```
+
 ## How checks work
 
 Each configured server is checked with `ping -c 1 -W 2 <ip>` every 30 minutes,
